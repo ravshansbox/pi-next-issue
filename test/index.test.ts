@@ -6,7 +6,7 @@ import { CONFIG, fake, issue } from './fake.ts';
 
 type Handler = (event: unknown, ctx: unknown) => unknown;
 
-function host() {
+function host(mode = 'tui') {
   const commands = new Map<string, (args: string, ctx: unknown) => Promise<void>>();
   const handlers = new Map<string, Handler[]>();
   const pi = {
@@ -21,9 +21,10 @@ function host() {
   const widgets: Array<string[] | undefined> = [];
   const status: Array<string | undefined> = [];
   const notes: string[] = [];
-  const plain = (text: string) => text.replace(/<\/?\w+>/g, '');
+  const plain = (text: string) => /^<dim>(.*)<\/dim>$/s.exec(text)?.[1] ?? text;
   const ctx = {
     hasUI: true,
+    mode,
     cwd: '/repo',
     ui: {
       theme: { fg: (color: string, text: string) => `<${color}>${text}</${color}>` },
@@ -68,7 +69,7 @@ test('a user who runs /next-issue start sees the run in the footer and a note pe
   await emit('session_shutdown', { reason: 'quit' });
 });
 
-test('a user sees the footer status and the last tool line in the dim colour of the statusline', async () => {
+test('a user who runs /next-issue start sees the footer status and the last tool line in the dim colour of the theme', async () => {
   let release = () => {};
   const { ports } = fake({
     issues: [issue(7)],
@@ -88,6 +89,29 @@ test('a user sees the footer status and the last tool line in the dim colour of 
   release();
   await settle();
   assert.equal(painted.at(-1), '<dim>next-issue · finished: 1 merged</dim>');
+  await emit('session_shutdown', { reason: 'quit' });
+});
+
+test('a user of an rpc client who runs /next-issue start gets the footer status and the last tool line without colour codes', async () => {
+  let release = () => {};
+  const { ports } = fake({
+    issues: [issue(7)],
+    onWork: (task) => {
+      task.onTool('bash npm test');
+      return new Promise<void>((resolve) => (release = resolve));
+    },
+  });
+  const extension = createExtension(async () => new Runner(ports, CONFIG));
+  const { pi, painted, widgets, emit, command } = host('rpc');
+  extension(pi as never);
+  await emit('session_start');
+  await command('start');
+  await settle();
+  assert.match(painted.at(-1) ?? '', /^next-issue #7 · implement · 1 tools · \d+s$/);
+  assert.deepEqual(widgets.at(-1), ['↳ bash npm test']);
+  release();
+  await settle();
+  assert.equal(painted.at(-1), 'next-issue · finished: 1 merged');
   await emit('session_shutdown', { reason: 'quit' });
 });
 
