@@ -248,6 +248,10 @@ export async function merge(
   timeoutMs: number,
   signal: AbortSignal,
 ): Promise<boolean> {
+  const before = await gh(repo, ['pr', 'view', String(pr), '--json', 'state', '--jq', '.state']);
+  if (before === 'MERGED') {
+    return true;
+  }
   const result = await run('gh', ['pr', 'merge', String(pr), '--squash', '--repo', repo.slug], {
     cwd: repo.root,
   });

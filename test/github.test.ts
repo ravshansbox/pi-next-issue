@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { test } from 'node:test';
-import { comments, openIssues } from '../src/github.ts';
+import { comments, merge, openIssues } from '../src/github.ts';
 
 test('the agents read issue comments only from the owner, members and collaborators', async () => {
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
@@ -91,6 +91,33 @@ test('the runner sees the oldest ready issues and every saved issue it can read,
     assert.deepEqual(
       issues.map((item) => item.number),
       [1, 7, 3],
+    );
+  } finally {
+    process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('the runner finishes a pull request that was merged before a stop without merging it again', async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    [
+      '#!/bin/sh',
+      'case "$*" in',
+      '  "pr view 5 --json state --jq .state --repo owner/name") echo MERGED ;;',
+      '  *) exit 1 ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const original = process.env['PATH'];
+  process.env['PATH'] = `${bin}${path.delimiter}${original}`;
+  try {
+    assert.equal(
+      await merge({ root: bin, slug: 'owner/name' }, 5, 1000, new AbortController().signal),
+      true,
     );
   } finally {
     process.env['PATH'] = original;
