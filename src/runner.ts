@@ -332,9 +332,9 @@ export class Runner {
         }
         case 'merge': {
           this.stage('merge');
-          const merged = await ports.merge(pr(), this.controller.signal);
-          if (!merged.merged) {
-            return needsHuman(`pull request #${pr()} could not be merged: ${merged.reason}`);
+          const result = await ports.merge(pr(), this.controller.signal);
+          if (!result.merged) {
+            return needsHuman(`pull request #${pr()} could not be merged: ${result.reason}`);
           }
           await ports.setLabel(number, LABELS.done, [LABELS.inProgress]);
           await ports.cleanup(number, state.branch, cwd);

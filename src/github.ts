@@ -258,7 +258,7 @@ export async function merge(
   if (result.code !== 0) {
     return {
       merged: false,
-      reason: result.stderr.trim() || `gh pr merge failed with code ${result.code}`,
+      reason: result.stderr.trim().slice(-2000) || `gh pr merge failed with code ${result.code}`,
     };
   }
   const deadline = Date.now() + timeoutMs;

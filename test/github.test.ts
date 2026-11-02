@@ -152,3 +152,31 @@ test('the runner learns why gh could not merge a pull request', async () => {
     fs.rmSync(bin, { recursive: true, force: true });
   }
 });
+
+test('the runner keeps only the last 2000 characters of why gh could not merge a pull request', async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    [
+      '#!/bin/sh',
+      'case "$*" in',
+      '  "pr view 5 --json state --jq .state --repo owner/name") echo OPEN ;;',
+      `  "pr merge 5 --squash --repo owner/name") printf '%s' "${'a'.repeat(100)}${'b'.repeat(2000)}" >&2; exit 1 ;;`,
+      '  *) exit 1 ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const original = process.env['PATH'];
+  process.env['PATH'] = `${bin}${path.delimiter}${original}`;
+  try {
+    assert.deepEqual(
+      await merge({ root: bin, slug: 'owner/name' }, 5, 1000, new AbortController().signal),
+      { merged: false, reason: 'b'.repeat(2000) },
+    );
+  } finally {
+    process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
+  }
+});
