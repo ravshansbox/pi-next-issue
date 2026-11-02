@@ -68,6 +68,7 @@ const launchFromRepo: Launch = async (cwd) => {
 export function createExtension(launch: Launch) {
   return (pi: ExtensionAPI) => {
     let ui: ExtensionContext['ui'] | undefined;
+    let coloured = false;
     let timer: ReturnType<typeof setInterval> | undefined;
     let unsubscribe: (() => void) | undefined;
     let handled = 0;
@@ -79,9 +80,11 @@ export function createExtension(launch: Launch) {
         return;
       }
       const progress = runner.progress;
-      ui.setStatus(STATUS_KEY, formatStatus(progress, Date.now()));
+      const theme = ui.theme;
+      const dim = (text: string) => (coloured ? theme.fg('dim', text) : text);
+      ui.setStatus(STATUS_KEY, dim(formatStatus(progress, Date.now())));
       const active = progress.status === 'running' && progress.lastTool !== undefined;
-      ui.setWidget(STATUS_KEY, active ? [`↳ ${progress.lastTool}`] : undefined);
+      ui.setWidget(STATUS_KEY, active ? [dim(`↳ ${progress.lastTool}`)] : undefined);
     };
 
     const onChange = (progress: Progress) => {
@@ -128,6 +131,7 @@ export function createExtension(launch: Launch) {
         return;
       }
       ui = ctx.ui;
+      coloured = ctx.mode === 'tui';
       timer ??= setInterval(render, 1000);
       timer.unref?.();
       const runner = holder().runner;
@@ -174,6 +178,7 @@ export function createExtension(launch: Launch) {
           holder().runner = runner;
           if (ctx.hasUI) {
             ui = ctx.ui;
+            coloured = ctx.mode === 'tui';
             follow(runner);
           }
           void runner.run();
