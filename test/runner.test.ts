@@ -147,6 +147,36 @@ test('the runner skips a saved issue that a user marked with a stop label and ke
   assert.deepEqual([...states.keys()], [4, 5, 6]);
 });
 
+test('the runner skips a saved issue that a user marked blocked, resumes the next saved issue and then claims a ready issue', async () => {
+  const saved = (number: number, pr: number): IssueState => ({
+    issue: number,
+    branch: String(number),
+    phase: 'review',
+    pr,
+    title: 'feat: x',
+    ciFixes: 0,
+    round: 0,
+    earlier: [],
+  });
+  const { ports, calls, states } = fake({
+    issues: [
+      issue(4, ['status:in-progress', 'status:blocked']),
+      issue(3),
+      issue(8, ['status:in-progress']),
+    ],
+    states: [saved(4, 51), saved(8, 52)],
+  });
+  await new Runner(ports, CONFIG).run();
+  assert.ok(!calls.some((call) => call.includes('#4') || call.includes('#51')));
+  assert.deepEqual(calls.slice(0, 3), ['worktree #8 8', 'review', 'discard /wt/8 8']);
+  assert.ok(calls.includes('merge #52'));
+  assert.ok(
+    calls.indexOf('merge #52') < calls.indexOf('label #3 +status:in-progress -status:todo'),
+  );
+  assert.ok(calls.includes('label #3 +status:done -status:in-progress'));
+  assert.deepEqual([...states.keys()], [4]);
+});
+
 test('the runner shows the issue, the stage and the tool count while an agent works', async () => {
   let seen: Progress | undefined;
   const { ports } = fake({
