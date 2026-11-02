@@ -69,7 +69,7 @@ export function fake(script: Script) {
       return commits.shift() ?? true;
     },
     push: async (_cwd, branch) => record(`push ${branch}`),
-    discard: async () => record('discard'),
+    discard: async (cwd, branch) => record(`discard ${cwd} ${branch}`),
     diff: async () => 'diff --git a/x b/x',
     openPr: async (branch, title, body) => {
       record(`pr ${branch} ${title} ${body}`);
