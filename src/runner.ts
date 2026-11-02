@@ -45,6 +45,7 @@ export type Ports = {
   commentOnIssue(issue: number, body: string): Promise<void>;
   worktree(issue: number, branch: string): Promise<string>;
   commit(cwd: string, message: string): Promise<boolean>;
+  ahead(cwd: string): Promise<string | undefined>;
   push(cwd: string, branch: string): Promise<void>;
   discard(cwd: string, branch: string): Promise<void>;
   diff(cwd: string): Promise<string>;
@@ -242,6 +243,11 @@ export class Runner {
       switch (state.phase) {
         case 'implement': {
           this.stage('implement');
+          const kept = saved === undefined ? undefined : await ports.ahead(cwd);
+          if (kept !== undefined) {
+            await save({ phase: 'publish', title: kept });
+            break;
+          }
           const reply = await this.agent('work', cwd, implementPrompt(issue, comments));
           const title = parseCommitSubject(reply, `feat: ${issue.title}`);
           if (!(await ports.commit(cwd, title))) {

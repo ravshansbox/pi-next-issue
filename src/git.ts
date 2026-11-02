@@ -77,6 +77,16 @@ export async function commit(cwd: string, message: string): Promise<boolean> {
   return true;
 }
 
+export async function ahead(
+  cwd: string,
+  remote: string,
+  base: string,
+): Promise<string | undefined> {
+  const range = `${remote}/${base}..HEAD`;
+  const subjects = await must('git', ['log', '--reverse', '--format=%s', range], { cwd });
+  return subjects.split('\n')[0] || undefined;
+}
+
 export async function push(cwd: string, remote: string, branch: string): Promise<void> {
   await must('git', ['push', '-u', remote, `HEAD:refs/heads/${branch}`], { cwd });
 }

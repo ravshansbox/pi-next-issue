@@ -124,6 +124,27 @@ test('the runner resumes a saved issue at its saved phase without claiming it ag
   );
 });
 
+test('the runner publishes the commit it finds when it resumes an issue whose implement phase was cut short', async () => {
+  const saved: IssueState = {
+    issue: 9,
+    branch: '9',
+    phase: 'implement',
+    ciFixes: 0,
+    round: 0,
+    earlier: [],
+  };
+  const { ports, calls } = fake({
+    issues: [issue(9, ['status:in-progress'])],
+    states: [saved],
+    ahead: 'feat: kept',
+  });
+  const runner = new Runner(ports, CONFIG);
+  await runner.run();
+  assert.deepEqual(calls.slice(0, 3), ['worktree #9 9', 'push 9', 'pr 9 feat: kept Closes #9']);
+  assert.ok(!calls.includes('work'));
+  assert.deepEqual(runner.progress.handled, [{ issue: 9, outcome: 'merged' }]);
+});
+
 test('the runner skips a saved issue that a user marked with a stop label and keeps its saved state', async () => {
   const saved = (number: number): IssueState => ({
     issue: number,
