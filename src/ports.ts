@@ -32,5 +32,7 @@ export async function createPorts(root: string, config: Config): Promise<Ports> 
     writeState: (value) => state.writeState(root, value),
     dropState: (issue) => state.dropState(root, issue),
     savedIssues: () => state.savedIssues(root),
+    lock: () => state.lock(root),
+    unlock: () => state.unlock(root),
   };
 }

@@ -60,6 +60,8 @@ export type Ports = {
   writeState(state: IssueState): Promise<void>;
   dropState(issue: number): Promise<void>;
   savedIssues(): Promise<number[]>;
+  lock(): Promise<void>;
+  unlock(): Promise<void>;
 };
 
 export type Outcome = 'merged' | 'needs-human';
@@ -123,7 +125,10 @@ export class Runner {
   async run(): Promise<void> {
     this.update({ status: 'running' });
     const seen = new Set<number>();
+    let locked = false;
     try {
+      await this.ports.lock();
+      locked = true;
       for (;;) {
         this.controller.signal.throwIfAborted();
         const issues = await this.ports.openIssues();
@@ -147,6 +152,10 @@ export class Runner {
           status: 'failed',
           error: error instanceof Error ? error.message : String(error),
         });
+      }
+    } finally {
+      if (locked) {
+        await this.ports.unlock().catch(() => {});
       }
     }
   }

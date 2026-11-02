@@ -20,6 +20,7 @@ type Script = {
   merge?: boolean;
   onWork?: (task: AgentTask) => void | Promise<void>;
   failOn?: string;
+  lockedByOther?: boolean;
 };
 
 export function issue(number: number, labels = ['status:todo']): Issue {
@@ -38,6 +39,7 @@ export function fake(script: Script) {
   const verdicts = [...(script.verdicts ?? [])];
   const replies = [...(script.replies ?? [])];
   const commits = [...(script.commits ?? [])];
+  const lock = { held: false };
   const record = (call: string) => {
     calls.push(call);
     if (script.failOn !== undefined && call.startsWith(script.failOn)) {
@@ -96,6 +98,15 @@ export function fake(script: Script) {
       states.delete(number);
     },
     savedIssues: async () => [...states.keys()],
+    lock: async () => {
+      if (script.lockedByOther === true) {
+        throw new Error('another run works on this repository (pid 1)');
+      }
+      lock.held = true;
+    },
+    unlock: async () => {
+      lock.held = false;
+    },
   };
-  return { ports, calls, prompts, states };
+  return { ports, calls, prompts, states, lock };
 }

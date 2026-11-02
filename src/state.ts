@@ -38,3 +38,37 @@ export async function savedIssues(root: string): Promise<number[]> {
     return match === null ? [] : [Number(match[1])];
   });
 }
+
+function lockFile(root: string): string {
+  return join(dir(root), 'run.lock');
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+export async function lock(root: string): Promise<void> {
+  await mkdir(dir(root), { recursive: true });
+  try {
+    await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error;
+    }
+    const pid = Number((await readFile(lockFile(root), 'utf8').catch(() => '')).trim());
+    if (Number.isInteger(pid) && pid > 0 && alive(pid)) {
+      throw new Error(`another run works on this repository (pid ${pid})`, { cause: error });
+    }
+    await rm(lockFile(root), { force: true });
+    await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+  }
+}
+
+export async function unlock(root: string): Promise<void> {
+  await rm(lockFile(root), { force: true });
+}
