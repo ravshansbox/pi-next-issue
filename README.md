@@ -28,7 +28,7 @@ Each loop fetches the 200 oldest open issues with the `status:todo` label and no
 2. Add a git worktree at `.worktrees/<n>` on the `<n>` branch, from the remote default branch.
 3. The implementer agent does the work. The extension commits it, with the subject from a `commit:` line in the reply of the agent, and pushes. When a resumed issue already has a commit ahead of the base, the extension keeps it and skips the implementer.
 4. Open a pull request that closes the issue.
-5. Wait for the checks. On a red build, the fixer agent gets the failed logs, up to `maxCiFixes` times.
+5. Wait for the checks. On a red build, the fixer agent gets the failed logs. It gets at most `maxCiFixes` such fixes for the whole issue, and this count includes the checks after review fixes.
 6. The reviewer agent judges the diff and gives a verdict with `blocking` and `minor` findings, which goes on the pull request. Any change the reviewer makes is thrown away.
 7. While review rounds are left, the fixer gets every finding, and the checks and the review run again. In the last round only a blocking finding stops the merge.
 8. Squash-merge the pull request, wait until it is merged, set `status:done`, and remove the worktree, the local branch, the remote branch and the saved state.
@@ -45,11 +45,11 @@ The state of each issue is saved in `.worktrees/<n>.json`. Each loop removes the
 
 An optional `.pi/next-issue.json` in the repository sets these fields:
 
-| Field                 | Default    | Meaning                                           |
-| --------------------- | ---------- | ------------------------------------------------- |
-| `remote`              | `"origin"` | The git remote to push to.                        |
-| `maxCiFixes`          | `3`        | Fixes of red checks per issue.                    |
-| `maxReviewRounds`     | `3`        | Review rounds per issue.                          |
-| `checkTimeoutMinutes` | `30`       | The longest wait for the checks, and for a merge. |
-| `diffMaxChars`        | `60000`    | The longest diff that the reviewer gets.          |
-| `logMaxChars`         | `20000`    | The longest failed log that the fixer gets.       |
+| Field                 | Default    | Meaning                                                                           |
+| --------------------- | ---------- | --------------------------------------------------------------------------------- |
+| `remote`              | `"origin"` | The git remote to push to.                                                        |
+| `maxCiFixes`          | `3`        | Fixes of red checks for the whole issue, including the checks after review fixes. |
+| `maxReviewRounds`     | `3`        | Review rounds per issue.                                                          |
+| `checkTimeoutMinutes` | `30`       | The longest wait for the checks, and for a merge.                                 |
+| `diffMaxChars`        | `60000`    | The longest diff that the reviewer gets.                                          |
+| `logMaxChars`         | `20000`    | The longest failed log that the fixer gets.                                       |
