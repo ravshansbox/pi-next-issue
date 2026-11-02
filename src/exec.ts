@@ -8,16 +8,19 @@ export function run(command: string, args: string[], options: RunOptions): Promi
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: [options.input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     let stdout = '';
     let stderr = '';
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
+    child.stdout?.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
+    child.stderr?.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
     child.on('error', reject);
     child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
-    child.stdin.end(options.input ?? '');
+    if (options.input !== undefined) {
+      child.stdin?.on('error', () => {});
+      child.stdin?.end(options.input);
+    }
   });
 }
 
