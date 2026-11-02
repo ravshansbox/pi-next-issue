@@ -17,7 +17,7 @@ export async function createPorts(root: string, config: Config): Promise<Ports> 
     worktree: (issue, branch) => git.worktree(root, config.remote, base, issue, branch),
     commit: (cwd, message) => git.commit(cwd, message),
     push: (cwd, branch) => git.push(cwd, config.remote, branch),
-    discard: (cwd) => git.discard(cwd),
+    discard: (cwd, branch) => git.discard(cwd, config.remote, branch),
     diff: (cwd) => git.diff(cwd, config.remote, base),
     openPr: (branch, title, body) => github.openPr(repo, branch, base, title, body),
     checks: async (pr, cwd, signal) =>
