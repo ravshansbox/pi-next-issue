@@ -212,7 +212,7 @@ test('a user sees why a run could not start', async () => {
   assert.ok(notes.includes('next-issue cannot start: not a git repository'));
 });
 
-test('the footer shows the issue, the stage, the tool count and the time spent', () => {
+test('a user sees the issue, the stage, the tool count and the time spent in the footer', () => {
   const text = formatStatus(
     { status: 'running', issue: 12, stage: 'checks', tools: 37, issueStartedAt: 0, handled: [] },
     252_000,
@@ -220,7 +220,7 @@ test('the footer shows the issue, the stage, the tool count and the time spent',
   assert.equal(text, 'next-issue #12 · checks · 37 tools · 4m12s');
 });
 
-test('the footer sums up a finished run by outcome', () => {
+test('a user sees a finished run summed up by outcome in the footer', () => {
   const text = formatStatus(
     {
       status: 'finished',
@@ -236,7 +236,7 @@ test('the footer sums up a finished run by outcome', () => {
   assert.equal(text, 'next-issue · finished: 2 merged, 1 needs a human');
 });
 
-test('the footer shows the error of a failed run', () => {
+test('a user sees the error of a failed run in the footer', () => {
   const text = formatStatus({ status: 'failed', tools: 0, handled: [], error: 'gh is missing' }, 0);
   assert.equal(text, 'next-issue · failed: gh is missing');
 });
