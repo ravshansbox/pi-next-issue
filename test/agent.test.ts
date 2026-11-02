@@ -16,19 +16,19 @@ test('the agent session keeps an extension whose folder only shares a name prefi
   assert.equal(isOwnExtension(path.dirname(PACKAGE_DIR)), false);
 });
 
-test('the status shows the tool name with its command, path or pattern', () => {
+test('a user sees the tool name with its command, path or pattern in the status', () => {
   assert.equal(toolLabel('bash', { command: 'npm test' }), 'bash npm test');
   assert.equal(toolLabel('read', { path: 'src/a.ts' }), 'read src/a.ts');
   assert.equal(toolLabel('edit', { file_path: 'src/b.ts' }), 'edit src/b.ts');
   assert.equal(toolLabel('grep', { pattern: 'TODO' }), 'grep TODO');
 });
 
-test('the status shows only the tool name when the arguments have no detail', () => {
+test('a user sees only the tool name in the status when the arguments have no detail', () => {
   assert.equal(toolLabel('ls', undefined), 'ls');
   assert.equal(toolLabel('ls', { limit: 3 }), 'ls');
 });
 
-test('the status shows only the first line of a long command, cut to 80 characters', () => {
+test('a user sees only the first line of a long command in the status, cut to 80 characters', () => {
   assert.equal(toolLabel('bash', { command: 'echo one\necho two' }), 'bash echo one');
   const label = toolLabel('bash', { command: 'x'.repeat(200) });
   assert.equal(label.length, 80);

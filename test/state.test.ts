@@ -28,7 +28,7 @@ test('a run takes over the lock of a run that is no longer alive', async () => {
   await unlock(repo);
 });
 
-test('the lock file is not taken for a saved issue', async () => {
+test('a run does not list its lock file as a saved issue', async () => {
   const repo = root();
   await lock(repo);
   assert.deepEqual(await savedIssues(repo), []);
