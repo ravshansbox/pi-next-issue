@@ -6,7 +6,7 @@ A [pi](https://github.com/earendil-works/pi) extension that works through the op
 pi install npm:@ravshansbox/pi-next-issue
 ```
 
-It needs `git` and an authenticated [`gh`](https://cli.github.com/).
+It needs `git` and an authenticated [`gh`](https://cli.github.com/). It works with github.com and GitHub Enterprise remotes.
 
 ## Use
 

@@ -30,6 +30,15 @@ test('the owner and name come from ssh and https remotes', () => {
   assert.equal(parseRemote('https://github.com/owner/name'), 'owner/name');
 });
 
+test('a github enterprise remote keeps its host in the repository name', () => {
+  assert.equal(parseRemote('git@ghe.example.com:owner/name.git'), 'ghe.example.com/owner/name');
+  assert.equal(parseRemote('https://ghe.example.com/owner/name.git'), 'ghe.example.com/owner/name');
+  assert.equal(
+    parseRemote('ssh://git@ghe.example.com:2222/owner/name.git'),
+    'ghe.example.com/owner/name',
+  );
+});
+
 test('an issue gets a worktree on its own branch that git ignores, and finds it again', async () => {
   const { root } = repository();
   const tree = await worktree(root, 'origin', 'main', 5, '5');
