@@ -6,7 +6,7 @@ import { type Progress, Runner } from './src/runner.ts';
 
 type Launch = (cwd: string) => Promise<Runner>;
 
-type Holder = { runner?: Runner };
+type Holder = { runner?: Runner; launching?: boolean };
 
 const KEY = Symbol.for('pi-next-issue');
 const STATUS_KEY = 'next-issue';
@@ -157,10 +157,11 @@ export function createExtension(launch: Launch) {
         const busy =
           current?.progress.status === 'running' || current?.progress.status === 'stopping';
         if (action === 'start') {
-          if (busy) {
+          if (busy || holder().launching) {
             ctx.ui.notify('next-issue is running already', 'warning');
             return;
           }
+          holder().launching = true;
           let runner: Runner;
           try {
             runner = await launch(ctx.cwd);
@@ -170,6 +171,8 @@ export function createExtension(launch: Launch) {
               'error',
             );
             return;
+          } finally {
+            holder().launching = false;
           }
           holder().runner = runner;
           if (ctx.hasUI) {
