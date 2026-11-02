@@ -9,15 +9,20 @@ export async function repoRoot(cwd: string): Promise<string> {
 }
 
 export function parseRemote(url: string): string {
-  const match =
+  const remote = url.trim();
+  const hosted =
     /^(?:[\w+.-]+:\/\/)?(?:[^@/]+@)?([^/:]+)(?::\d+)?[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/.exec(
-      url.trim(),
+      remote,
     );
-  if (match === null) {
+  if (hosted !== null) {
+    const [, host, owner, name] = hosted;
+    return host?.toLowerCase() === 'github.com' ? `${owner}/${name}` : `${host}/${owner}/${name}`;
+  }
+  const path = /[/:]([^/:]+)\/([^/]+?)(?:\.git)?\/?$/.exec(remote);
+  if (path === null) {
     throw new Error(`cannot read the owner and name from the git remote ${url}`);
   }
-  const [, host, owner, name] = match;
-  return host?.toLowerCase() === 'github.com' ? `${owner}/${name}` : `${host}/${owner}/${name}`;
+  return `${path[1]}/${path[2]}`;
 }
 
 export async function remoteSlug(root: string, remote: string): Promise<string> {

@@ -40,6 +40,12 @@ test('a github enterprise remote keeps its host in the repository name', () => {
   );
 });
 
+test('a remote with a path prefix or a local path still gives the last two path segments', () => {
+  assert.equal(parseRemote('https://github.com/prefix/owner/name.git'), 'owner/name');
+  assert.equal(parseRemote('file:///srv/git/owner/name.git'), 'owner/name');
+  assert.equal(parseRemote('/srv/git/owner/name.git'), 'owner/name');
+});
+
 test('an issue gets a worktree on its own branch that git ignores, and finds it again', async () => {
   const { root } = repository();
   const tree = await worktree(root, 'origin', 'main', 5, '5');
