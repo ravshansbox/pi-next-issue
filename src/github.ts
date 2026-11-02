@@ -227,15 +227,24 @@ export async function failedLogs(repo: Repo, pr: number, maxChars: number): Prom
   const failed = (await readChecks(repo, pr)).filter(
     (check) => check.bucket === 'fail' || check.bucket === 'cancel',
   );
-  const share = Math.max(1, Math.floor(maxChars / Math.max(1, failed.length)));
-  const parts: string[] = [];
+  const groups = new Map<string, { names: string[]; runId: string | undefined }>();
   for (const check of failed) {
-    parts.push(`## ${check.name}`);
     const runId = /\/actions\/runs\/(\d+)/.exec(check.link)?.[1];
-    if (runId !== undefined) {
-      const logs = await run('gh', ['run', 'view', runId, '--log-failed', '--repo', repo.slug], {
-        cwd: repo.root,
-      });
+    const key = runId ?? `check:${check.name}`;
+    const group = groups.get(key) ?? { names: [], runId };
+    group.names.push(check.name);
+    groups.set(key, group);
+  }
+  const share = Math.max(1, Math.floor(maxChars / Math.max(1, groups.size)));
+  const parts: string[] = [];
+  for (const group of groups.values()) {
+    parts.push(`## ${group.names.join(', ')}`);
+    if (group.runId !== undefined) {
+      const logs = await run(
+        'gh',
+        ['run', 'view', group.runId, '--log-failed', '--repo', repo.slug],
+        { cwd: repo.root },
+      );
       parts.push((logs.stdout || logs.stderr).slice(-share));
     }
   }
