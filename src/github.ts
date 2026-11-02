@@ -273,6 +273,6 @@ export async function merge(
     if (Date.now() >= deadline) {
       return { merged: false, reason: 'the merge did not finish in time' };
     }
-    await sleep(Math.min(POLL_MS, deadline - Date.now()), undefined, { signal });
+    await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())), undefined, { signal });
   }
 }

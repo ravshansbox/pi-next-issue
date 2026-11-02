@@ -180,3 +180,40 @@ test('the runner keeps only the last 2000 characters of why gh could not merge a
     fs.rmSync(bin, { recursive: true, force: true });
   }
 });
+
+test('the runner waits for a merge without a negative timeout warning when the deadline passes mid-poll', async (context) => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
+  const seen = path.join(bin, 'seen');
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    [
+      '#!/bin/sh',
+      'case "$*" in',
+      '  "pr merge 5 --squash --repo owner/name") exit 0 ;;',
+      `  "pr view 5 --json state --jq .state --repo owner/name") echo x >> "${seen}"; if [ "$(wc -l < "${seen}")" -gt 2 ]; then echo MERGED; else echo OPEN; fi ;;`,
+      '  *) exit 1 ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const times = [0, 0, 5000];
+  context.mock.method(Date, 'now', () => times.shift() ?? 5000);
+  const warnings: string[] = [];
+  const listen = (warning: Error) => warnings.push(warning.name);
+  process.on('warning', listen);
+  const original = process.env['PATH'];
+  process.env['PATH'] = `${bin}${path.delimiter}${original}`;
+  try {
+    assert.deepEqual(
+      await merge({ root: bin, slug: 'owner/name' }, 5, 1000, new AbortController().signal),
+      { merged: true },
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(warnings, []);
+  } finally {
+    process.off('warning', listen);
+    process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
+  }
+});
