@@ -25,7 +25,7 @@ function repository(): { root: string; remote: string } {
   return { root, remote };
 }
 
-test('the owner and name come from ssh and https remotes', () => {
+test('the runner reads the owner and name from ssh and https remotes', () => {
   assert.equal(parseRemote('git@github.com:owner/name.git'), 'owner/name');
   assert.equal(parseRemote('https://github.com/owner/name'), 'owner/name');
   assert.equal(parseRemote('https://GitHub.com/owner/name'), 'owner/name');
