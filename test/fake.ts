@@ -25,6 +25,7 @@ type Script = {
   verdicts?: Array<Verdict | undefined>;
   replies?: string[];
   commits?: boolean[];
+  ahead?: string;
   merge?: MergeResult;
   onWork?: (task: AgentTask) => void | Promise<void>;
   failOn?: string;
@@ -68,6 +69,7 @@ export function fake(script: Script) {
       record(`commit ${message}`);
       return commits.shift() ?? true;
     },
+    ahead: async () => script.ahead,
     push: async (_cwd, branch) => record(`push ${branch}`),
     discard: async (cwd, branch) => record(`discard ${cwd} ${branch}`),
     diff: async () => 'diff --git a/x b/x',

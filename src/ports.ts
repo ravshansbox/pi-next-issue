@@ -20,6 +20,7 @@ export async function createPorts(root: string, config: Config): Promise<Ports> 
     commentOnIssue: (issue, body) => github.commentOnIssue(repo, issue, body),
     worktree: (issue, branch) => git.worktree(root, config.remote, base, issue, branch),
     commit: (cwd, message) => git.commit(cwd, message),
+    ahead: (cwd) => git.ahead(cwd, config.remote, base),
     push: (cwd, branch) => git.push(cwd, config.remote, branch),
     discard: (cwd, branch) => git.discard(cwd, config.remote, branch),
     diff: (cwd) => git.diff(cwd, config.remote, base),

@@ -26,7 +26,7 @@ Each loop fetches the 200 oldest open issues with the `status:todo` label and no
 
 1. Swap `status:todo` for `status:in-progress`.
 2. Add a git worktree at `.worktrees/<n>` on the `<n>` branch, from the remote default branch.
-3. The implementer agent does the work. The extension commits it, with the subject from a `commit:` line in the reply of the agent, and pushes.
+3. The implementer agent does the work. The extension commits it, with the subject from a `commit:` line in the reply of the agent, and pushes. When a resumed issue already has a commit ahead of the base, the extension keeps it and skips the implementer.
 4. Open a pull request that closes the issue.
 5. Wait for the checks. On a red build, the fixer agent gets the failed logs, up to `maxCiFixes` times.
 6. The reviewer agent judges the diff and gives a verdict with `blocking` and `minor` findings, which goes on the pull request. Any change the reviewer makes is thrown away.

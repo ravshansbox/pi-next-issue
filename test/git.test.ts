@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { test } from 'node:test';
-import { cleanup, commit, diff, discard, parseRemote, push, worktree } from '../src/git.ts';
+import { ahead, cleanup, commit, diff, discard, parseRemote, push, worktree } from '../src/git.ts';
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -56,6 +56,17 @@ test('work in the worktree is committed, pushed, diffed against the base and kep
   await discard(tree, 'origin', '5');
   assert.equal(fs.readFileSync(path.join(tree, 'b.txt'), 'utf8'), 'b\n');
   assert.equal(fs.existsSync(path.join(tree, 'c.txt')), false);
+});
+
+test('the subject of the first commit ahead of the base is found, and nothing before a commit', async () => {
+  const { root } = repository();
+  const tree = await worktree(root, 'origin', 'main', 5, '5');
+  assert.equal(await ahead(tree, 'origin', 'main'), undefined);
+  fs.writeFileSync(path.join(tree, 'b.txt'), 'b\n');
+  await commit(tree, 'feat: add b');
+  fs.writeFileSync(path.join(tree, 'c.txt'), 'c\n');
+  await commit(tree, 'fix: add c');
+  assert.equal(await ahead(tree, 'origin', 'main'), 'feat: add b');
 });
 
 test('a reviewer change is discarded in a worktree made from the remote branch without an upstream', async () => {
