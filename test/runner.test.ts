@@ -200,3 +200,19 @@ test('the runner fails without touching any issue when another run holds the rep
   assert.match(runner.progress.error ?? '', /another run works on this repository/);
   assert.deepEqual(calls, []);
 });
+
+test('the runner labels an issue needs-human and says why when its pull request cannot be merged', async () => {
+  const { ports, calls } = fake({
+    issues: [issue(7)],
+    merge: { merged: false, reason: 'the base branch policy prohibits the merge' },
+  });
+  const runner = new Runner(ports, CONFIG);
+  await runner.run();
+  assert.ok(calls.includes('label #7 +status:needs-human -status:in-progress'));
+  assert.ok(
+    calls.includes(
+      'issue comment #7 next-issue stopped: pull request #50 could not be merged: the base branch policy prohibits the merge',
+    ),
+  );
+  assert.deepEqual(runner.progress.handled, [{ issue: 7, outcome: 'needs-human' }]);
+});

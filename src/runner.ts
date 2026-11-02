@@ -52,7 +52,7 @@ export type Ports = {
   checks(pr: number, cwd: string, signal: AbortSignal): Promise<ChecksResult>;
   failedLogs(pr: number): Promise<string>;
   commentOnPr(pr: number, body: string): Promise<void>;
-  merge(pr: number, signal: AbortSignal): Promise<boolean>;
+  merge(pr: number, signal: AbortSignal): Promise<MergeResult>;
   cleanup(issue: number, branch: string, cwd: string): Promise<void>;
   work(task: AgentTask): Promise<string>;
   review(task: AgentTask): Promise<Verdict | undefined>;
@@ -63,6 +63,8 @@ export type Ports = {
   lock(): Promise<void>;
   unlock(): Promise<void>;
 };
+
+export type MergeResult = { merged: true } | { merged: false; reason: string };
 
 export type Outcome = 'merged' | 'needs-human';
 
@@ -330,8 +332,9 @@ export class Runner {
         }
         case 'merge': {
           this.stage('merge');
-          if (!(await ports.merge(pr(), this.controller.signal))) {
-            return needsHuman(`pull request #${pr()} could not be merged`);
+          const result = await ports.merge(pr(), this.controller.signal);
+          if (!result.merged) {
+            return needsHuman(`pull request #${pr()} could not be merged: ${result.reason}`);
           }
           await ports.setLabel(number, LABELS.done, [LABELS.inProgress]);
           await ports.cleanup(number, state.branch, cwd);
