@@ -42,7 +42,7 @@ test('the agents read issue comments only from the owner, members and collaborat
   }
 });
 
-test('the runner sees the oldest ready issues and every saved issue, oldest first', async () => {
+test('the runner sees the oldest ready issues and every saved issue it can read, oldest first', async () => {
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
   const entry = (number: number, createdAt: string, labels: string[]) => ({
     number,
@@ -75,7 +75,7 @@ test('the runner sees the oldest ready issues and every saved issue, oldest firs
     [
       '#!/bin/sh',
       'case "$*" in',
-      `  "issue list --state open --label status:todo --search sort:created-asc --limit 200 --json ${fields} --repo owner/name") cat "${path.join(bin, 'list.json')}" ;;`,
+      `  "issue list --state open --label status:todo --search sort:created-asc -label:status:in-progress -label:status:done -label:status:needs-human -label:status:blocked --limit 200 --json ${fields} --repo owner/name") cat "${path.join(bin, 'list.json')}" ;;`,
       `  "issue view 7 --json ${fields},state --repo owner/name") cat "${path.join(bin, '7.json')}" ;;`,
       `  "issue view 8 --json ${fields},state --repo owner/name") cat "${path.join(bin, '8.json')}" ;;`,
       '  *) exit 1 ;;',
@@ -87,7 +87,7 @@ test('the runner sees the oldest ready issues and every saved issue, oldest firs
   const original = process.env['PATH'];
   process.env['PATH'] = `${bin}${path.delimiter}${original}`;
   try {
-    const issues = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8]);
+    const issues = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8, 9]);
     assert.deepEqual(
       issues.map((item) => item.number),
       [1, 7, 3],

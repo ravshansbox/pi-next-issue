@@ -86,7 +86,7 @@ export const LABELS = {
   blocked: 'status:blocked',
 };
 
-const STOP_LABELS = [LABELS.inProgress, LABELS.done, LABELS.needsHuman, LABELS.blocked];
+export const STOP_LABELS = [LABELS.inProgress, LABELS.done, LABELS.needsHuman, LABELS.blocked];
 
 function ready(issue: Issue): boolean {
   return (

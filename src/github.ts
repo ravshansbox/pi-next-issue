@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { must, run } from './exec.ts';
-import type { ChecksResult, Issue } from './runner.ts';
+import { LABELS, STOP_LABELS, type ChecksResult, type Issue } from './runner.ts';
 
 export type Repo = { root: string; slug: string };
 
@@ -45,9 +45,9 @@ export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> 
     '--state',
     'open',
     '--label',
-    'status:todo',
+    LABELS.ready,
     '--search',
-    'sort:created-asc',
+    ['sort:created-asc', ...STOP_LABELS.map((label) => `-label:${label}`)].join(' '),
     '--limit',
     '200',
     '--json',
@@ -56,14 +56,15 @@ export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> 
   const listed = JSON.parse(raw) as RawIssue[];
   const known = new Set(listed.map((item) => item.number));
   for (const number of saved.filter((item) => !known.has(item))) {
-    const view = await gh(repo, [
-      'issue',
-      'view',
-      String(number),
-      '--json',
-      `${ISSUE_FIELDS},state`,
-    ]);
-    const item = JSON.parse(view) as RawIssue & { state: string };
+    const view = await run(
+      'gh',
+      ['issue', 'view', String(number), '--json', `${ISSUE_FIELDS},state`, '--repo', repo.slug],
+      { cwd: repo.root },
+    );
+    if (view.code !== 0) {
+      continue;
+    }
+    const item = JSON.parse(view.stdout) as RawIssue & { state: string };
     if (item.state === 'OPEN') {
       listed.push(item);
     }
