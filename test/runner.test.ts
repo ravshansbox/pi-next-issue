@@ -178,3 +178,25 @@ test('the runner tells its listeners about each change', async () => {
     assert.ok(stages.includes(stage), stage);
   }
 });
+
+test('the runner holds the repository lock while it runs and lets go when it ends', async () => {
+  let heldDuringWork = false;
+  const { ports, lock } = fake({
+    issues: [issue(7)],
+    onWork: () => {
+      heldDuringWork = lock.held;
+    },
+  });
+  await new Runner(ports, CONFIG).run();
+  assert.equal(heldDuringWork, true);
+  assert.equal(lock.held, false);
+});
+
+test('the runner fails without touching any issue when another run holds the repository lock', async () => {
+  const { ports, calls } = fake({ issues: [issue(7)], lockedByOther: true });
+  const runner = new Runner(ports, CONFIG);
+  await runner.run();
+  assert.equal(runner.progress.status, 'failed');
+  assert.match(runner.progress.error ?? '', /another run works on this repository/);
+  assert.deepEqual(calls, []);
+});

@@ -39,7 +39,7 @@ The implementer and the reviewer read the issue title, the body and the comments
 
 Each agent is a pi session in the worktree. It uses the model and thinking level from your pi settings, and loads all of your extensions except this one.
 
-The state of each issue is saved in `.worktrees/<n>.json`. The extension adds `/.worktrees/` to `.git/info/exclude`.
+The state of each issue is saved in `.worktrees/<n>.json`. A run holds `.worktrees/run.lock`, which keeps the process id, so that only one pi at a time works on a repository. A second run fails at once. A lock whose process is no longer alive is taken over. If the operating system gives that process id to another process, the lock stays; remove `.worktrees/run.lock` by hand when no run is going. The extension adds `/.worktrees/` to `.git/info/exclude`.
 
 ## Config
 
