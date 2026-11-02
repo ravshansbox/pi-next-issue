@@ -21,9 +21,13 @@ test('the agents read issue comments only from the owner, members and collaborat
     ],
   });
   fs.writeFileSync(path.join(bin, 'output.json'), output);
-  fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\ncat "${path.join(bin, 'output.json')}"\n`, {
-    mode: 0o755,
-  });
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    `#!/bin/sh\n[ "$*" = "issue view 1 --json comments --repo owner/name" ] || exit 1\ncat "${path.join(bin, 'output.json')}"\n`,
+    {
+      mode: 0o755,
+    },
+  );
   const original = process.env['PATH'];
   process.env['PATH'] = `${bin}${path.delimiter}${original}`;
   try {
@@ -34,5 +38,6 @@ test('the agents read issue comments only from the owner, members and collaborat
     ]);
   } finally {
     process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
   }
 });
