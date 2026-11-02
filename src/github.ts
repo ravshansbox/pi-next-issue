@@ -9,6 +9,7 @@ type Check = { name: string; bucket: string; link: string };
 const POLL_MS = 15_000;
 const GRACE_MS = 60_000;
 const READ_TRIES = 3;
+const TRUSTED = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 
 function gh(repo: Repo, args: string[], input?: string): Promise<string> {
   return must('gh', [...args, '--repo', repo.slug], {
@@ -58,9 +59,11 @@ export async function openIssues(repo: Repo): Promise<Issue[]> {
 export async function comments(repo: Repo, issue: number): Promise<string[]> {
   const raw = await gh(repo, ['issue', 'view', String(issue), '--json', 'comments']);
   const parsed = JSON.parse(raw) as {
-    comments: Array<{ author: { login: string }; body: string }>;
+    comments: Array<{ author: { login: string }; authorAssociation: string; body: string }>;
   };
-  return parsed.comments.map((comment) => `@${comment.author.login}: ${comment.body}`);
+  return parsed.comments
+    .filter((comment) => TRUSTED.includes(comment.authorAssociation))
+    .map((comment) => `@${comment.author.login}: ${comment.body}`);
 }
 
 export async function setLabel(

@@ -35,6 +35,8 @@ Each loop fetches the open issues and takes the oldest one with saved state, els
 
 An issue that cannot go on gets `status:needs-human` and a comment with the reason. Its worktree stays for you to look at.
 
+The implementer and the reviewer read the issue title, the body and the comments. They get only comments by the owner, members and collaborators of the repository. The body is passed as it is, and its author can edit it after you add the label, so check the body before you add the label.
+
 Each agent is a pi session in the worktree. It uses the model and thinking level from your pi settings, and loads all of your extensions except this one.
 
 The state of each issue is saved in `.worktrees/<n>.json`. The extension adds `/.worktrees/` to `.git/info/exclude`.
