@@ -124,6 +124,29 @@ test('the runner resumes a saved issue at its saved phase without claiming it ag
   );
 });
 
+test('the runner skips a saved issue that a user marked with a stop label and keeps its saved state', async () => {
+  const saved = (number: number): IssueState => ({
+    issue: number,
+    branch: String(number),
+    phase: 'review',
+    pr: 51,
+    ciFixes: 0,
+    round: 0,
+    earlier: [],
+  });
+  const { ports, calls, states } = fake({
+    issues: [
+      issue(4, ['status:in-progress', 'status:blocked']),
+      issue(5, ['status:in-progress', 'status:needs-human']),
+      issue(6, ['status:in-progress', 'status:done']),
+    ],
+    states: [saved(4), saved(5), saved(6)],
+  });
+  await new Runner(ports, CONFIG).run();
+  assert.deepEqual(calls, []);
+  assert.deepEqual([...states.keys()], [4, 5, 6]);
+});
+
 test('the runner shows the issue, the stage and the tool count while an agent works', async () => {
   let seen: Progress | undefined;
   const { ports } = fake({
