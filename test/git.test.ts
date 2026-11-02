@@ -28,6 +28,22 @@ function repository(): { root: string; remote: string } {
 test('the owner and name come from ssh and https remotes', () => {
   assert.equal(parseRemote('git@github.com:owner/name.git'), 'owner/name');
   assert.equal(parseRemote('https://github.com/owner/name'), 'owner/name');
+  assert.equal(parseRemote('https://GitHub.com/owner/name'), 'owner/name');
+});
+
+test('a github enterprise remote keeps its host in the repository name', () => {
+  assert.equal(parseRemote('git@ghe.example.com:owner/name.git'), 'ghe.example.com/owner/name');
+  assert.equal(parseRemote('https://ghe.example.com/owner/name.git'), 'ghe.example.com/owner/name');
+  assert.equal(
+    parseRemote('ssh://git@ghe.example.com:2222/owner/name.git'),
+    'ghe.example.com/owner/name',
+  );
+});
+
+test('a remote with a path prefix or a local path still gives the last two path segments', () => {
+  assert.equal(parseRemote('https://github.com/prefix/owner/name.git'), 'owner/name');
+  assert.equal(parseRemote('file:///srv/git/owner/name.git'), 'owner/name');
+  assert.equal(parseRemote('/srv/git/owner/name.git'), 'owner/name');
 });
 
 test('an issue gets a worktree on its own branch that git ignores, and finds it again', async () => {
