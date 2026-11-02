@@ -135,6 +135,29 @@ test('a user who starts a second run while one is running is told so', async () 
   assert.ok(notes.includes('next-issue stopped'));
 });
 
+test('a user who starts a second run while the first is still launching is told so', async () => {
+  const pending: Array<() => void> = [];
+  let launches = 0;
+  const { ports } = fake({ issues: [] });
+  const extension = createExtension(async () => {
+    launches += 1;
+    await new Promise<void>((resolve) => pending.push(resolve));
+    return new Runner(ports, CONFIG);
+  });
+  const { pi, notes, emit, command } = host();
+  extension(pi as never);
+  await emit('session_start');
+  const first = command('start');
+  const second = command('start');
+  await settle();
+  for (const finishLaunch of pending) finishLaunch();
+  await Promise.all([first, second]);
+  await settle();
+  assert.equal(launches, 1);
+  assert.ok(notes.includes('next-issue is running already'));
+  await emit('session_shutdown', { reason: 'quit' });
+});
+
 test('a run keeps going in a new session and shows up there', async () => {
   let release = () => {};
   const { ports } = fake({
