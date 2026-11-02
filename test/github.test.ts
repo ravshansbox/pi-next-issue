@@ -42,7 +42,7 @@ test('the agents read issue comments only from the owner, members and collaborat
   }
 });
 
-test('the runner sees the oldest ready issues and every saved issue it can read, oldest first', async () => {
+test('the runner sees the oldest ready issues and every saved issue it can read, oldest first, and learns which saved issues are closed', async () => {
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
   const entry = (number: number, createdAt: string, labels: string[]) => ({
     number,
@@ -87,11 +87,12 @@ test('the runner sees the oldest ready issues and every saved issue it can read,
   const original = process.env['PATH'];
   process.env['PATH'] = `${bin}${path.delimiter}${original}`;
   try {
-    const issues = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8, 9]);
+    const { open, closed } = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8, 9]);
     assert.deepEqual(
-      issues.map((item) => item.number),
+      open.map((item) => item.number),
       [1, 7, 3],
     );
+    assert.deepEqual(closed, [8]);
   } finally {
     process.env['PATH'] = original;
     fs.rmSync(bin, { recursive: true, force: true });

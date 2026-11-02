@@ -10,7 +10,11 @@ export async function createPorts(root: string, config: Config): Promise<Ports> 
   const base = await github.defaultBranch(repo);
   const timeoutMs = config.checkTimeoutMinutes * 60_000;
   return {
-    openIssues: async () => github.openIssues(repo, await state.savedIssues(root)),
+    openIssues: async () => {
+      const { open, closed } = await github.openIssues(repo, await state.savedIssues(root));
+      await Promise.all(closed.map((issue) => state.dropState(root, issue)));
+      return open;
+    },
     comments: (issue) => github.comments(repo, issue),
     setLabel: (issue, add, remove) => github.setLabel(repo, issue, add, remove),
     commentOnIssue: (issue, body) => github.commentOnIssue(repo, issue, body),
