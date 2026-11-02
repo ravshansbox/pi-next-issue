@@ -46,7 +46,7 @@ export type Ports = {
   worktree(issue: number, branch: string): Promise<string>;
   commit(cwd: string, message: string): Promise<boolean>;
   push(cwd: string, branch: string): Promise<void>;
-  discard(cwd: string): Promise<void>;
+  discard(cwd: string, branch: string): Promise<void>;
   diff(cwd: string): Promise<string>;
   openPr(branch: string, title: string, body: string): Promise<number>;
   checks(pr: number, cwd: string, signal: AbortSignal): Promise<ChecksResult>;
@@ -294,7 +294,7 @@ export class Runner {
             cwd,
             reviewPrompt(issue, comments, diff, state.earlier),
           );
-          await ports.discard(cwd);
+          await ports.discard(cwd, state.branch);
           if (verdict === undefined) {
             return needsHuman('the reviewer gave no verdict');
           }

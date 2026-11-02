@@ -53,9 +53,25 @@ test('work in the worktree is committed, pushed, diffed against the base and kep
   assert.match(await diff(tree, 'origin', 'main'), /\+b/);
   fs.writeFileSync(path.join(tree, 'b.txt'), 'changed\n');
   fs.writeFileSync(path.join(tree, 'c.txt'), 'c\n');
-  await discard(tree);
+  await discard(tree, 'origin', '5');
   assert.equal(fs.readFileSync(path.join(tree, 'b.txt'), 'utf8'), 'b\n');
   assert.equal(fs.existsSync(path.join(tree, 'c.txt')), false);
+});
+
+test('a reviewer change is discarded in a worktree made from the remote branch without an upstream', async () => {
+  const { root } = repository();
+  const tree = await worktree(root, 'origin', 'main', 5, '5');
+  fs.writeFileSync(path.join(tree, 'b.txt'), 'b\n');
+  await commit(tree, 'feat: add b');
+  await push(tree, 'origin', '5');
+  git(root, 'worktree', 'remove', '--force', tree);
+  git(root, 'branch', '-D', '5');
+  const again = await worktree(root, 'origin', 'main', 5, '5');
+  fs.writeFileSync(path.join(again, 'b.txt'), 'changed\n');
+  fs.writeFileSync(path.join(again, 'c.txt'), 'c\n');
+  await discard(again, 'origin', '5');
+  assert.equal(fs.readFileSync(path.join(again, 'b.txt'), 'utf8'), 'b\n');
+  assert.equal(fs.existsSync(path.join(again, 'c.txt')), false);
 });
 
 test('a cleanup removes the worktree, the local branch and the remote branch', async () => {

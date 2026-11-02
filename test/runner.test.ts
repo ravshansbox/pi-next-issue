@@ -16,7 +16,7 @@ test('the runner implements a ready issue, merges its pull request after a clean
     'pr 7 feat: do it Closes #7',
     'checks #50',
     'review',
-    'discard',
+    'discard /wt/7 7',
     'pr comment #50 ### Review: approved',
     'merge #50',
     'label #7 +status:done -status:in-progress',
@@ -117,7 +117,7 @@ test('the runner resumes a saved issue at its saved phase without claiming it ag
     states: [saved],
   });
   await new Runner(ports, CONFIG).run();
-  assert.deepEqual(calls.slice(0, 3), ['worktree #9 9', 'review', 'discard']);
+  assert.deepEqual(calls.slice(0, 3), ['worktree #9 9', 'review', 'discard /wt/9 9']);
   assert.ok(calls.includes('merge #51'));
   assert.ok(
     calls.indexOf('merge #51') < calls.indexOf('label #3 +status:in-progress -status:todo'),

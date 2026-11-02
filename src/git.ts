@@ -81,8 +81,8 @@ export async function push(cwd: string, remote: string, branch: string): Promise
   await must('git', ['push', '-u', remote, `HEAD:refs/heads/${branch}`], { cwd });
 }
 
-export async function discard(cwd: string): Promise<void> {
-  await must('git', ['reset', '--hard', '@{upstream}'], { cwd });
+export async function discard(cwd: string, remote: string, branch: string): Promise<void> {
+  await must('git', ['reset', '--hard', `${remote}/${branch}`], { cwd });
   await must('git', ['clean', '-fd'], { cwd });
 }
 
