@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { must, run } from './exec.ts';
-import type { ChecksResult, Issue } from './runner.ts';
+import { LABELS, STOP_LABELS, type ChecksResult, type Issue } from './runner.ts';
 
 export type Repo = { root: string; slug: string };
 
@@ -28,25 +28,48 @@ export async function defaultBranch(repo: Repo): Promise<string> {
   );
 }
 
-export async function openIssues(repo: Repo): Promise<Issue[]> {
+type RawIssue = {
+  number: number;
+  title: string;
+  body: string | null;
+  createdAt: string;
+  labels: Array<{ name: string }>;
+};
+
+const ISSUE_FIELDS = 'number,title,body,labels,createdAt';
+
+export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> {
   const raw = await gh(repo, [
     'issue',
     'list',
     '--state',
     'open',
+    '--label',
+    LABELS.ready,
+    '--search',
+    ['sort:created-asc', ...STOP_LABELS.map((label) => `-label:${label}`)].join(' '),
     '--limit',
     '200',
     '--json',
-    'number,title,body,labels,createdAt',
+    ISSUE_FIELDS,
   ]);
-  const parsed = JSON.parse(raw) as Array<{
-    number: number;
-    title: string;
-    body: string | null;
-    createdAt: string;
-    labels: Array<{ name: string }>;
-  }>;
-  return parsed
+  const listed = JSON.parse(raw) as RawIssue[];
+  const known = new Set(listed.map((item) => item.number));
+  for (const number of saved.filter((item) => !known.has(item))) {
+    const view = await run(
+      'gh',
+      ['issue', 'view', String(number), '--json', `${ISSUE_FIELDS},state`, '--repo', repo.slug],
+      { cwd: repo.root },
+    );
+    if (view.code !== 0) {
+      continue;
+    }
+    const item = JSON.parse(view.stdout) as RawIssue & { state: string };
+    if (item.state === 'OPEN') {
+      listed.push(item);
+    }
+  }
+  return listed
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((item) => ({
       number: item.number,
