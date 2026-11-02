@@ -60,9 +60,19 @@ function busy(pid: number, cause: unknown): Error {
   return new Error(`another run works on this repository (pid ${pid})`, { cause });
 }
 
+async function place(root: string): Promise<void> {
+  const draft = `${lockFile(root)}.${process.pid}.draft`;
+  await writeFile(draft, `${process.pid}\n`);
+  try {
+    await link(draft, lockFile(root));
+  } finally {
+    await rm(draft, { force: true });
+  }
+}
+
 async function claim(root: string): Promise<void> {
   try {
-    await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+    await place(root);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
       throw busy(await holder(lockFile(root)), error);
@@ -74,7 +84,7 @@ async function claim(root: string): Promise<void> {
 export async function lock(root: string): Promise<void> {
   await mkdir(dir(root), { recursive: true });
   try {
-    await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+    await place(root);
     return;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {

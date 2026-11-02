@@ -52,3 +52,11 @@ test('a run that takes over a dead lock leaves no stale file behind', async () =
   await unlock(repo);
   assert.deepEqual(fs.readdirSync(path.join(repo, '.worktrees')), []);
 });
+
+test('a second run that finds the lock held leaves no file of its own behind', async () => {
+  const repo = root();
+  await lock(repo);
+  await assert.rejects(lock(repo), /another run works on this repository/);
+  assert.deepEqual(fs.readdirSync(path.join(repo, '.worktrees')), ['run.lock']);
+  await unlock(repo);
+});
