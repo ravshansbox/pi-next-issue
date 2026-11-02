@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WORKTREE_DIR } from './git.ts';
 import type { IssueState } from './runner.ts';
@@ -52,23 +52,60 @@ function alive(pid: number): boolean {
   }
 }
 
+async function holder(path: string): Promise<number> {
+  return Number((await readFile(path, 'utf8').catch(() => '')).trim());
+}
+
+function busy(pid: number, cause: unknown): Error {
+  return new Error(`another run works on this repository (pid ${pid})`, { cause });
+}
+
+async function claim(root: string): Promise<void> {
+  try {
+    await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      throw busy(await holder(lockFile(root)), error);
+    }
+    throw error;
+  }
+}
+
 export async function lock(root: string): Promise<void> {
   await mkdir(dir(root), { recursive: true });
   try {
     await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+    return;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
       throw error;
     }
-    const pid = Number((await readFile(lockFile(root), 'utf8').catch(() => '')).trim());
+    const pid = await holder(lockFile(root));
     if (Number.isInteger(pid) && pid > 0 && alive(pid)) {
-      throw new Error(`another run works on this repository (pid ${pid})`, { cause: error });
+      throw busy(pid, error);
     }
-    await rm(lockFile(root), { force: true });
-    await writeFile(lockFile(root), `${process.pid}\n`, { flag: 'wx' });
+    const stale = `${lockFile(root)}.${process.pid}`;
+    try {
+      await rename(lockFile(root), stale);
+    } catch (renameError) {
+      if ((renameError as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw renameError;
+      }
+      return claim(root);
+    }
+    const moved = await holder(stale);
+    if (!Object.is(moved, pid)) {
+      await link(stale, lockFile(root)).catch(() => undefined);
+      await rm(stale, { force: true });
+      throw busy(moved, error);
+    }
+    await rm(stale, { force: true });
   }
+  await claim(root);
 }
 
 export async function unlock(root: string): Promise<void> {
-  await rm(lockFile(root), { force: true });
+  if ((await holder(lockFile(root))) === process.pid) {
+    await rm(lockFile(root), { force: true });
+  }
 }

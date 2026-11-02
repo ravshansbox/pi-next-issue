@@ -34,3 +34,21 @@ test('the lock file is not taken for a saved issue', async () => {
   assert.deepEqual(await savedIssues(repo), []);
   await unlock(repo);
 });
+
+test('a run that ends leaves alone a lock that another run holds', async () => {
+  const repo = root();
+  fs.mkdirSync(path.join(repo, '.worktrees'));
+  fs.writeFileSync(path.join(repo, '.worktrees', 'run.lock'), '99999999\n');
+  await unlock(repo);
+  assert.equal(fs.readFileSync(path.join(repo, '.worktrees', 'run.lock'), 'utf8'), '99999999\n');
+});
+
+test('a run that takes over a dead lock leaves no stale file behind', async () => {
+  const repo = root();
+  fs.mkdirSync(path.join(repo, '.worktrees'));
+  fs.writeFileSync(path.join(repo, '.worktrees', 'run.lock'), '99999999\n');
+  await lock(repo);
+  assert.deepEqual(fs.readdirSync(path.join(repo, '.worktrees')), ['run.lock']);
+  await unlock(repo);
+  assert.deepEqual(fs.readdirSync(path.join(repo, '.worktrees')), []);
+});
