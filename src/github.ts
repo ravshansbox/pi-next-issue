@@ -38,7 +38,10 @@ type RawIssue = {
 
 const ISSUE_FIELDS = 'number,title,body,labels,createdAt';
 
-export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> {
+export async function openIssues(
+  repo: Repo,
+  saved: number[],
+): Promise<{ open: Issue[]; closed: number[] }> {
   const raw = await gh(repo, [
     'issue',
     'list',
@@ -55,6 +58,7 @@ export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> 
   ]);
   const listed = JSON.parse(raw) as RawIssue[];
   const known = new Set(listed.map((item) => item.number));
+  const closed: number[] = [];
   for (const number of saved.filter((item) => !known.has(item))) {
     const view = await run(
       'gh',
@@ -67,9 +71,11 @@ export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> 
     const item = JSON.parse(view.stdout) as RawIssue & { state: string };
     if (item.state === 'OPEN') {
       listed.push(item);
+    } else {
+      closed.push(number);
     }
   }
-  return listed
+  const open = listed
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((item) => ({
       number: item.number,
@@ -77,6 +83,7 @@ export async function openIssues(repo: Repo, saved: number[]): Promise<Issue[]> 
       body: item.body ?? '',
       labels: item.labels.map((label) => label.name),
     }));
+  return { open, closed };
 }
 
 export async function comments(repo: Repo, issue: number): Promise<string[]> {

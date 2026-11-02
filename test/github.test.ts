@@ -87,11 +87,64 @@ test('the runner sees the oldest ready issues and every saved issue it can read,
   const original = process.env['PATH'];
   process.env['PATH'] = `${bin}${path.delimiter}${original}`;
   try {
-    const issues = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8, 9]);
+    const { open } = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8, 9]);
     assert.deepEqual(
-      issues.map((item) => item.number),
+      open.map((item) => item.number),
       [1, 7, 3],
     );
+  } finally {
+    process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('the runner learns which saved issues are closed', async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
+  const entry = (number: number, createdAt: string, labels: string[]) => ({
+    number,
+    title: `issue ${number}`,
+    body: null,
+    createdAt,
+    labels: labels.map((name) => ({ name })),
+  });
+  fs.writeFileSync(
+    path.join(bin, 'list.json'),
+    JSON.stringify([
+      entry(3, '2024-03-01T00:00:00Z', ['status:todo']),
+      entry(1, '2024-01-01T00:00:00Z', ['status:todo']),
+    ]),
+  );
+  fs.writeFileSync(
+    path.join(bin, '7.json'),
+    JSON.stringify({ ...entry(7, '2024-02-01T00:00:00Z', ['status:in-progress']), state: 'OPEN' }),
+  );
+  fs.writeFileSync(
+    path.join(bin, '8.json'),
+    JSON.stringify({
+      ...entry(8, '2024-02-02T00:00:00Z', ['status:in-progress']),
+      state: 'CLOSED',
+    }),
+  );
+  const fields = 'number,title,body,labels,createdAt';
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    [
+      '#!/bin/sh',
+      'case "$*" in',
+      `  "issue list --state open --label status:todo --search sort:created-asc -label:status:in-progress -label:status:done -label:status:needs-human -label:status:blocked --limit 200 --json ${fields} --repo owner/name") cat "${path.join(bin, 'list.json')}" ;;`,
+      `  "issue view 7 --json ${fields},state --repo owner/name") cat "${path.join(bin, '7.json')}" ;;`,
+      `  "issue view 8 --json ${fields},state --repo owner/name") cat "${path.join(bin, '8.json')}" ;;`,
+      '  *) exit 1 ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const original = process.env['PATH'];
+  process.env['PATH'] = `${bin}${path.delimiter}${original}`;
+  try {
+    const { closed } = await openIssues({ root: bin, slug: 'owner/name' }, [1, 7, 8, 9]);
+    assert.deepEqual(closed, [8]);
   } finally {
     process.env['PATH'] = original;
     fs.rmSync(bin, { recursive: true, force: true });
