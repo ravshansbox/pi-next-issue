@@ -10,13 +10,11 @@ It needs `git` and an authenticated [`gh`](https://cli.github.com/). It works wi
 
 ## Use
 
-Run these in pi, inside a git repository:
+Run this in pi, inside a git repository:
 
-- `/next-issue start` starts a run.
-- `/next-issue stop` stops the run. The issue keeps its saved state, and the next run resumes it.
-- `/next-issue status` shows where the run is.
+- `/next-issue` starts a run when none is going, and stops the run when one is going or stopping. A stopped issue keeps its saved state, and the next run resumes it.
 
-The footer shows the issue, the stage, the number of tool calls and the time spent on the issue, for example `next-issue #12 · review 1/3 · 37 tools · 4m12s`. A line above the editor shows the last tool call. In the terminal, both use the dim colour of the theme, like the rest of the footer. A note appears when an issue is merged or needs a human.
+The footer shows the issue, the stage, the number of tool calls and the time spent on the issue, for example `next-issue #12 · review 1/3 · 37 tools · 4m12s`. After a run ends, it keeps the last summary. A line above the editor shows the last tool call. In the terminal, both use the dim colour of the theme, like the rest of the footer. A note appears when an issue is merged or needs a human.
 
 The run does not belong to a session: it goes on after `/new`, `/resume`, a fork or a reload, and the new session shows it. It stops when you quit pi.
 

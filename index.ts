@@ -148,59 +148,39 @@ export function createExtension(launch: Launch) {
     });
 
     pi.registerCommand('next-issue', {
-      description: 'Work through the GitHub issues of this repository in the background',
-      getArgumentCompletions: (prefix) => {
-        const items = ['start', 'stop', 'status']
-          .filter((name) => name.startsWith(prefix))
-          .map((name) => ({ value: name, label: name }));
-        return items.length > 0 ? items : null;
-      },
-      handler: async (args, ctx) => {
-        const action = args.trim() || 'status';
+      description: 'Start or stop working through the GitHub issues of this repository',
+      handler: async (_args, ctx) => {
         const current = holder().runner;
         const busy =
           current?.progress.status === 'running' || current?.progress.status === 'stopping';
-        if (action === 'start') {
-          if (busy || holder().launching) {
-            ctx.ui.notify('next-issue is running already', 'warning');
-            return;
-          }
-          holder().launching = true;
-          let runner: Runner;
-          try {
-            runner = await launch(ctx.cwd);
-          } catch (error) {
-            ctx.ui.notify(
-              `next-issue cannot start: ${error instanceof Error ? error.message : String(error)}`,
-              'error',
-            );
-            return;
-          } finally {
-            holder().launching = false;
-          }
-          holder().runner = runner;
-          if (ctx.hasUI) {
-            ui = ctx.ui;
-            coloured = ctx.mode === 'tui';
-            follow(runner);
-          }
-          void runner.run();
-        } else if (action === 'stop') {
-          if (!busy) {
-            ctx.ui.notify('next-issue is not running', 'info');
-            return;
-          }
+        if (busy) {
           current?.stop();
-        } else if (action === 'status') {
-          ctx.ui.notify(
-            current === undefined
-              ? 'next-issue has not run yet'
-              : formatStatus(current.progress, Date.now()),
-            'info',
-          );
-        } else {
-          ctx.ui.notify('usage: /next-issue start | stop | status', 'warning');
+          return;
         }
+        if (holder().launching) {
+          ctx.ui.notify('next-issue is starting already', 'warning');
+          return;
+        }
+        holder().launching = true;
+        let runner: Runner;
+        try {
+          runner = await launch(ctx.cwd);
+        } catch (error) {
+          ctx.ui.notify(
+            `next-issue cannot start: ${error instanceof Error ? error.message : String(error)}`,
+            'error',
+          );
+          return;
+        } finally {
+          holder().launching = false;
+        }
+        holder().runner = runner;
+        if (ctx.hasUI) {
+          ui = ctx.ui;
+          coloured = ctx.mode === 'tui';
+          follow(runner);
+        }
+        void runner.run();
       },
     });
   };
