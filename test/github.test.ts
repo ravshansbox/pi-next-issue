@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { test } from 'node:test';
-import { comments, merge, openIssues } from '../src/github.ts';
+import { comments, failedLogs, merge, openIssues } from '../src/github.ts';
 
 test('the agents read issue comments only from the owner, members and collaborators', async () => {
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
@@ -213,6 +213,45 @@ test('the runner waits for a merge without a negative timeout warning when the d
     assert.deepEqual(warnings, []);
   } finally {
     process.off('warning', listen);
+    process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('the agent sees each failed workflow run log once when several checks share the run', async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
+  const runs = 'https://github.com/owner/name/actions/runs';
+  fs.writeFileSync(
+    path.join(bin, 'checks.json'),
+    JSON.stringify([
+      { name: 'lint', bucket: 'fail', link: `${runs}/11/job/1` },
+      { name: 'test', bucket: 'fail', link: `${runs}/11/job/2` },
+      { name: 'build', bucket: 'cancel', link: `${runs}/22/job/3` },
+      { name: 'docs', bucket: 'pass', link: `${runs}/33/job/4` },
+    ]),
+  );
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    [
+      '#!/bin/sh',
+      'case "$*" in',
+      `  "pr checks 5 --json name,bucket,link --repo owner/name") cat "${path.join(bin, 'checks.json')}" ;;`,
+      '  "run view 11 --log-failed --repo owner/name") echo "run 11 log" ;;',
+      '  "run view 22 --log-failed --repo owner/name") echo "run 22 log" ;;',
+      '  *) exit 1 ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const original = process.env['PATH'];
+  process.env['PATH'] = `${bin}${path.delimiter}${original}`;
+  try {
+    assert.equal(
+      await failedLogs({ root: bin, slug: 'owner/name' }, 5, 1000),
+      '## lint, test\n\nrun 11 log\n\n\n## build\n\nrun 22 log\n',
+    );
+  } finally {
     process.env['PATH'] = original;
     fs.rmSync(bin, { recursive: true, force: true });
   }
