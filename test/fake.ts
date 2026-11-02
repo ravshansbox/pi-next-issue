@@ -1,5 +1,13 @@
 import type { Config } from '../src/config.ts';
-import type { AgentTask, ChecksResult, Issue, IssueState, Ports, Verdict } from '../src/runner.ts';
+import type {
+  AgentTask,
+  ChecksResult,
+  Issue,
+  IssueState,
+  MergeResult,
+  Ports,
+  Verdict,
+} from '../src/runner.ts';
 
 export const CONFIG: Config = {
   remote: 'origin',
@@ -17,7 +25,7 @@ type Script = {
   verdicts?: Array<Verdict | undefined>;
   replies?: string[];
   commits?: boolean[];
-  merge?: boolean;
+  merge?: MergeResult;
   onWork?: (task: AgentTask) => void | Promise<void>;
   failOn?: string;
   lockedByOther?: boolean;
@@ -75,7 +83,7 @@ export function fake(script: Script) {
     commentOnPr: async (pr, body) => record(`pr comment #${pr} ${body.split('\n')[0]}`),
     merge: async (pr) => {
       record(`merge #${pr}`);
-      return script.merge ?? true;
+      return script.merge ?? { merged: true };
     },
     cleanup: async (number) => record(`cleanup #${number}`),
     work: async (task) => {

@@ -115,9 +115,37 @@ test('the runner finishes a pull request that was merged before a stop without m
   const original = process.env['PATH'];
   process.env['PATH'] = `${bin}${path.delimiter}${original}`;
   try {
-    assert.equal(
+    assert.deepEqual(
       await merge({ root: bin, slug: 'owner/name' }, 5, 1000, new AbortController().signal),
-      true,
+      { merged: true },
+    );
+  } finally {
+    process.env['PATH'] = original;
+    fs.rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('the runner learns why gh could not merge a pull request', async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-next-issue-gh-'));
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    [
+      '#!/bin/sh',
+      'case "$*" in',
+      '  "pr view 5 --json state --jq .state --repo owner/name") echo OPEN ;;',
+      '  "pr merge 5 --squash --repo owner/name") echo "the base branch policy prohibits the merge" >&2; exit 1 ;;',
+      '  *) exit 1 ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const original = process.env['PATH'];
+  process.env['PATH'] = `${bin}${path.delimiter}${original}`;
+  try {
+    assert.deepEqual(
+      await merge({ root: bin, slug: 'owner/name' }, 5, 1000, new AbortController().signal),
+      { merged: false, reason: 'the base branch policy prohibits the merge' },
     );
   } finally {
     process.env['PATH'] = original;

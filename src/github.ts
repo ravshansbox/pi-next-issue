@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { must, run } from './exec.ts';
-import { LABELS, STOP_LABELS, type ChecksResult, type Issue } from './runner.ts';
+import { LABELS, STOP_LABELS, type ChecksResult, type Issue, type MergeResult } from './runner.ts';
 
 export type Repo = { root: string; slug: string };
 
@@ -247,25 +247,31 @@ export async function merge(
   pr: number,
   timeoutMs: number,
   signal: AbortSignal,
-): Promise<boolean> {
+): Promise<MergeResult> {
   const before = await gh(repo, ['pr', 'view', String(pr), '--json', 'state', '--jq', '.state']);
   if (before === 'MERGED') {
-    return true;
+    return { merged: true };
   }
   const result = await run('gh', ['pr', 'merge', String(pr), '--squash', '--repo', repo.slug], {
     cwd: repo.root,
   });
   if (result.code !== 0) {
-    return false;
+    return {
+      merged: false,
+      reason: result.stderr.trim() || `gh pr merge failed with code ${result.code}`,
+    };
   }
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const state = await gh(repo, ['pr', 'view', String(pr), '--json', 'state', '--jq', '.state']);
     if (state === 'MERGED') {
-      return true;
+      return { merged: true };
     }
-    if (state === 'CLOSED' || Date.now() >= deadline) {
-      return false;
+    if (state === 'CLOSED') {
+      return { merged: false, reason: 'the pull request was closed' };
+    }
+    if (Date.now() >= deadline) {
+      return { merged: false, reason: 'the merge did not finish in time' };
     }
     await sleep(Math.min(POLL_MS, deadline - Date.now()), undefined, { signal });
   }
