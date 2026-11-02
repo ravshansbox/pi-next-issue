@@ -22,7 +22,7 @@ The run does not belong to a session: it goes on after `/new`, `/resume`, a fork
 
 ## What it does
 
-Each loop fetches the 200 oldest open issues with the `status:todo` label and none of `status:in-progress`, `status:done`, `status:needs-human` or `status:blocked`, and the open issues with saved state that it can read. It takes the oldest one with saved state, else the oldest one with the `status:todo` label and none of `status:in-progress`, `status:done`, `status:needs-human` or `status:blocked`. The run ends when no such issue is left, or at the first error. For each issue:
+Each loop fetches the 200 oldest open issues with the `status:todo` label and none of `status:in-progress`, `status:done`, `status:needs-human` or `status:blocked`, and the open issues with saved state that it can read. It takes the oldest one with saved state and none of `status:done`, `status:needs-human` or `status:blocked`, else the oldest one with the `status:todo` label and none of `status:in-progress`, `status:done`, `status:needs-human` or `status:blocked`. The run ends when no such issue is left, or at the first error. For each issue:
 
 1. Swap `status:todo` for `status:in-progress`.
 2. Add a git worktree at `.worktrees/<n>` on the `<n>` branch, from the remote default branch.

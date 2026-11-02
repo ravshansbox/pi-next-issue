@@ -99,6 +99,10 @@ function ready(issue: Issue): boolean {
   );
 }
 
+function resumable(issue: Issue): boolean {
+  return !issue.labels.some((label) => label !== LABELS.inProgress && STOP_LABELS.includes(label));
+}
+
 export class Runner {
   progress: Progress = { status: 'idle', tools: 0, handled: [] };
   private readonly controller = new AbortController();
@@ -137,7 +141,8 @@ export class Runner {
         const saved = new Set(await this.ports.savedIssues());
         const fresh = issues.filter((item) => !seen.has(item.number));
         const next =
-          fresh.find((item) => saved.has(item.number)) ?? fresh.find((item) => ready(item));
+          fresh.find((item) => saved.has(item.number) && resumable(item)) ??
+          fresh.find((item) => ready(item));
         if (next === undefined) {
           this.update({ status: 'finished', stage: undefined, issue: undefined, title: undefined });
           return;
