@@ -17,7 +17,7 @@ export function parseRemote(url: string): string {
     throw new Error(`cannot read the owner and name from the git remote ${url}`);
   }
   const [, host, owner, name] = match;
-  return host === 'github.com' ? `${owner}/${name}` : `${host}/${owner}/${name}`;
+  return host?.toLowerCase() === 'github.com' ? `${owner}/${name}` : `${host}/${owner}/${name}`;
 }
 
 export async function remoteSlug(root: string, remote: string): Promise<string> {

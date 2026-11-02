@@ -28,6 +28,7 @@ function repository(): { root: string; remote: string } {
 test('the owner and name come from ssh and https remotes', () => {
   assert.equal(parseRemote('git@github.com:owner/name.git'), 'owner/name');
   assert.equal(parseRemote('https://github.com/owner/name'), 'owner/name');
+  assert.equal(parseRemote('https://GitHub.com/owner/name'), 'owner/name');
 });
 
 test('a github enterprise remote keeps its host in the repository name', () => {
