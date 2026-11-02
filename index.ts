@@ -79,9 +79,11 @@ export function createExtension(launch: Launch) {
         return;
       }
       const progress = runner.progress;
-      ui.setStatus(STATUS_KEY, formatStatus(progress, Date.now()));
+      const theme = ui.theme;
+      const dim = (text: string) => theme.fg('dim', text);
+      ui.setStatus(STATUS_KEY, dim(formatStatus(progress, Date.now())));
       const active = progress.status === 'running' && progress.lastTool !== undefined;
-      ui.setWidget(STATUS_KEY, active ? [`↳ ${progress.lastTool}`] : undefined);
+      ui.setWidget(STATUS_KEY, active ? [dim(`↳ ${progress.lastTool}`)] : undefined);
     };
 
     const onChange = (progress: Progress) => {

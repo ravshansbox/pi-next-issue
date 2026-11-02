@@ -17,14 +17,21 @@ function host() {
     on: (event: string, handler: Handler) =>
       handlers.set(event, [...(handlers.get(event) ?? []), handler]),
   };
+  const painted: Array<string | undefined> = [];
+  const widgets: Array<string[] | undefined> = [];
   const status: Array<string | undefined> = [];
   const notes: string[] = [];
+  const plain = (text: string) => text.replace(/<\/?\w+>/g, '');
   const ctx = {
     hasUI: true,
     cwd: '/repo',
     ui: {
-      setStatus: (_key: string, text: string | undefined) => status.push(text),
-      setWidget: () => {},
+      theme: { fg: (color: string, text: string) => `<${color}>${text}</${color}>` },
+      setStatus: (_key: string, text: string | undefined) => {
+        painted.push(text);
+        status.push(text === undefined ? undefined : plain(text));
+      },
+      setWidget: (_key: string, lines: string[] | undefined) => widgets.push(lines),
       notify: (text: string) => notes.push(text),
     },
   };
@@ -34,7 +41,7 @@ function host() {
     }
   };
   const command = (args: string) => commands.get('next-issue')!(args, ctx);
-  return { pi, ctx, status, notes, emit, command };
+  return { pi, ctx, status, painted, widgets, notes, emit, command };
 }
 
 function settle(): Promise<void> {
@@ -58,6 +65,29 @@ test('a user who runs /next-issue start sees the run in the footer and a note pe
   assert.ok(status.some((text) => text?.startsWith('next-issue #7 · review 1/2')));
   assert.ok(notes.includes('next-issue: #7 merged'));
   assert.equal(status.at(-1), 'next-issue · finished: 1 merged');
+  await emit('session_shutdown', { reason: 'quit' });
+});
+
+test('a user sees the footer status and the last tool line in the dim colour of the statusline', async () => {
+  let release = () => {};
+  const { ports } = fake({
+    issues: [issue(7)],
+    onWork: (task) => {
+      task.onTool('bash npm test');
+      return new Promise<void>((resolve) => (release = resolve));
+    },
+  });
+  const extension = createExtension(async () => new Runner(ports, CONFIG));
+  const { pi, painted, widgets, emit, command } = host();
+  extension(pi as never);
+  await emit('session_start');
+  await command('start');
+  await settle();
+  assert.match(painted.at(-1) ?? '', /^<dim>next-issue #7 · implement · 1 tools · \d+s<\/dim>$/);
+  assert.deepEqual(widgets.at(-1), ['<dim>↳ bash npm test</dim>']);
+  release();
+  await settle();
+  assert.equal(painted.at(-1), '<dim>next-issue · finished: 1 merged</dim>');
   await emit('session_shutdown', { reason: 'quit' });
 });
 
