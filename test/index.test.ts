@@ -41,7 +41,7 @@ function host(mode = 'tui') {
       await handler(payload, ctx);
     }
   };
-  const command = (args: string) => commands.get('next-issue')!(args, ctx);
+  const command = () => commands.get('next-issue')!('', ctx);
   return { pi, ctx, status, painted, widgets, notes, emit, command };
 }
 
@@ -55,13 +55,13 @@ afterEach(() => {
   delete (globalThis as Record<symbol, unknown>)[KEY];
 });
 
-test('a user who runs /next-issue start sees the run in the footer and a note per merged issue', async () => {
+test('a user who runs /next-issue sees the run in the footer and a note per merged issue', async () => {
   const { ports } = fake({ issues: [issue(7)] });
   const extension = createExtension(async () => new Runner(ports, CONFIG));
   const { pi, status, notes, emit, command } = host();
   extension(pi as never);
   await emit('session_start');
-  await command('start');
+  await command();
   await settle();
   assert.ok(status.some((text) => text?.startsWith('next-issue #7 · review 1/2')));
   assert.ok(notes.includes('next-issue: #7 merged'));
@@ -69,7 +69,7 @@ test('a user who runs /next-issue start sees the run in the footer and a note pe
   await emit('session_shutdown', { reason: 'quit' });
 });
 
-test('a user who runs /next-issue start sees the footer status and the last tool line in the dim colour of the theme', async () => {
+test('a user who runs /next-issue sees the footer status and the last tool line in the dim colour of the theme', async () => {
   let release = () => {};
   const { ports } = fake({
     issues: [issue(7)],
@@ -82,7 +82,7 @@ test('a user who runs /next-issue start sees the footer status and the last tool
   const { pi, painted, widgets, emit, command } = host();
   extension(pi as never);
   await emit('session_start');
-  await command('start');
+  await command();
   await settle();
   assert.match(painted.at(-1) ?? '', /^<dim>next-issue #7 · implement · 1 tools · \d+s<\/dim>$/);
   assert.deepEqual(widgets.at(-1), ['<dim>↳ bash npm test</dim>']);
@@ -92,7 +92,7 @@ test('a user who runs /next-issue start sees the footer status and the last tool
   await emit('session_shutdown', { reason: 'quit' });
 });
 
-test('a user of an rpc client who runs /next-issue start gets the footer status and the last tool line without colour codes', async () => {
+test('a user of an rpc client who runs /next-issue gets the footer status and the last tool line without colour codes', async () => {
   let release = () => {};
   const { ports } = fake({
     issues: [issue(7)],
@@ -105,7 +105,7 @@ test('a user of an rpc client who runs /next-issue start gets the footer status 
   const { pi, painted, widgets, emit, command } = host('rpc');
   extension(pi as never);
   await emit('session_start');
-  await command('start');
+  await command();
   await settle();
   assert.match(painted.at(-1) ?? '', /^next-issue #7 · implement · 1 tools · \d+s$/);
   assert.deepEqual(widgets.at(-1), ['↳ bash npm test']);
@@ -115,24 +115,59 @@ test('a user of an rpc client who runs /next-issue start gets the footer status 
   await emit('session_shutdown', { reason: 'quit' });
 });
 
-test('a user who starts a second run while one is running is told so', async () => {
+test('a user who runs /next-issue while a run is going stops it and keeps the summary in the footer', async () => {
   let release = () => {};
+  let launches = 0;
+  const { ports, states } = fake({
+    issues: [issue(7)],
+    onWork: () => new Promise<void>((resolve) => (release = resolve)),
+  });
+  const extension = createExtension(async () => {
+    launches += 1;
+    return new Runner(ports, CONFIG);
+  });
+  const { pi, status, notes, emit, command } = host();
+  extension(pi as never);
+  await emit('session_start');
+  await command();
+  await settle();
+  await command();
+  assert.equal(status.at(-1), 'next-issue #7 · stopping');
+  await command();
+  release();
+  await settle();
+  assert.equal(launches, 1);
+  assert.ok(notes.includes('next-issue stopped'));
+  assert.equal(status.at(-1), 'next-issue · stopped: 0 merged');
+  assert.equal(states.get(7)?.phase, 'implement');
+});
+
+test('a user who runs /next-issue after a run has stopped starts a new run', async () => {
+  let release = () => {};
+  let launches = 0;
   const { ports } = fake({
     issues: [issue(7)],
     onWork: () => new Promise<void>((resolve) => (release = resolve)),
   });
-  const extension = createExtension(async () => new Runner(ports, CONFIG));
-  const { pi, notes, emit, command } = host();
+  const extension = createExtension(async () => {
+    launches += 1;
+    return new Runner(ports, CONFIG);
+  });
+  const { pi, status, emit, command } = host();
   extension(pi as never);
   await emit('session_start');
-  await command('start');
+  await command();
   await settle();
-  await command('start');
-  assert.ok(notes.includes('next-issue is running already'));
-  await command('stop');
+  await command();
   release();
   await settle();
-  assert.ok(notes.includes('next-issue stopped'));
+  await command();
+  await settle();
+  assert.equal(launches, 2);
+  assert.ok(status.at(-1)?.startsWith('next-issue #7 · implement'));
+  release();
+  await settle();
+  await emit('session_shutdown', { reason: 'quit' });
 });
 
 test('a user who starts a second run while the first is still launching is told so', async () => {
@@ -147,14 +182,14 @@ test('a user who starts a second run while the first is still launching is told 
   const { pi, notes, emit, command } = host();
   extension(pi as never);
   await emit('session_start');
-  const first = command('start');
-  const second = command('start');
+  const first = command();
+  const second = command();
   await settle();
   for (const finishLaunch of pending) finishLaunch();
   await Promise.all([first, second]);
   await settle();
   assert.equal(launches, 1);
-  assert.ok(notes.includes('next-issue is running already'));
+  assert.ok(notes.includes('next-issue is starting already'));
   await emit('session_shutdown', { reason: 'quit' });
 });
 
@@ -168,7 +203,7 @@ test('a run keeps going in a new session and shows up there', async () => {
   const first = host();
   extension(first.pi as never);
   await first.emit('session_start');
-  await first.command('start');
+  await first.command();
   await settle();
   await first.emit('session_shutdown', { reason: 'new' });
   const second = host();
@@ -192,7 +227,7 @@ test('a user who quits pi stops the run', async () => {
   const { pi, emit, command } = host();
   extension(pi as never);
   await emit('session_start');
-  await command('start');
+  await command();
   await settle();
   await emit('session_shutdown', { reason: 'quit' });
   release();
@@ -208,7 +243,7 @@ test('a user sees why a run could not start', async () => {
   const { pi, notes, emit, command } = host();
   extension(pi as never);
   await emit('session_start');
-  await command('start');
+  await command();
   assert.ok(notes.includes('next-issue cannot start: not a git repository'));
 });
 
